@@ -7,7 +7,6 @@ using namespace cv;
 
 /* 
  * Dark Channel Prior
- * J^dark(x) = min(min(J^c(y))), c¡Ê{R, G, B}
  */
 Mat Dark_Channel(Mat src, int height, int width, int ksize) 
 {
@@ -33,7 +32,6 @@ Mat Dark_Channel(Mat src, int height, int width, int ksize)
 
 /*
  * Atmospheric Light
- * A^c = ¡ÆTOP^c(x) / N, c¡Ê{R, G, B}
  */
 Vec<float, 3> Air_Light(Mat src, Mat dark, int height, int width, float ratio) 
 {
@@ -80,7 +78,6 @@ Vec<float, 3> Air_Light(Mat src, Mat dark, int height, int width, float ratio)
 
 /*
  * Get Transmissivity Image
- * t(x) = 1 - w * d
  */
 Mat Transmissivity_Image(Mat src, int height, int width, Vec<float, 3> A, float w, int ksize)
 {
@@ -182,49 +179,26 @@ int main()
 	Mat dark;					// Dark channel of image
 	Mat coarse_t;				// Coarse tranmissivity image
 	Mat refine_t;				// Refined transmissivity image
-	Vec<float, 3> A;			// Atmospheric light: A
+	Vec<float, 3> A;			// Atmospheric light
 
 	float ratio = 0.001;		// Ratio of picking up brightest pixels in image
 	float w = 0.95;				// Preserve a little haze to indicate depth
 	float eps = 0.001;			// Epsilon
-	float t0 = 0.1;				// Minimum value of t(x£©
+	float t0 = 0.1;				// Minimum value of t(x)
 	float exposure = 0;			// Exposure compensation
-
-	double t1, t2, t3, t4;
-
-	t1 = getTickCount();
 
 	dark = Dark_Channel(src, height, width, ksize);	// Get dark channel of image
 
-	t2 = getTickCount();
-	cout << "Get dark channel: " << (t2 - t1) / getTickFrequency() * 1000 << "ms" << endl;
-
-	A = Air_Light(src, dark, height, width, ratio);			// Get atmospheric light value						
-	cout << "Air Light: B:" << A[0] << ", G:" << A[1] << ", R:" << A[2] << endl;
+	A = Air_Light(src, dark, height, width, ratio);	// Get atmospheric light value						
 	
-	t3 = getTickCount();
-	cout << "Get air light: " << (t3 - t2) / getTickFrequency() * 1000 << "ms" << endl;
-
-	coarse_t = Transmissivity_Image(src, height, width, A, w, ksize);		// Get coarse transmissivity image
-
-	t4 = getTickCount();
-	cout << "Get coarse t(x): " << (t4 - t3) / getTickFrequency() * 1000 << "ms" << endl;
+	coarse_t = Transmissivity_Image(src, height, width, A, w, ksize);	// Get coarse transmissivity image
 
 	refine_t = Guided_Filter(src, coarse_t, height, width, fsize, eps);	// Get refined transmissivity image
 
-	t2 = getTickCount();
-	cout << "Get refined t(x): " << (t2 - t4) / getTickFrequency() * 1000 << "ms" << endl;
-	
 	Mat dehazed = Dehaze(src, refine_t, height, width, A, t0, exposure); // Get dehazed image
 	
-	t3 = getTickCount();
-	cout << "Get dehazed: " << (t3 - t2) / getTickFrequency() * 1000 << "ms" << endl;
-
-	t4 = getTickCount();
-	cout << "Total: " << (t4 - t1) / getTickFrequency() * 1000 << "ms" << endl;
-
-	//imwrite(out_path + img_name + "_t(x)_2.jpg", refine_t * 255);
-	//imwrite(out_path + img_name + "_dehaze_2.jpg", dehazed);
+	imwrite(out_path + img_name + "_t(x)_2.jpg", refine_t * 255);
+	imwrite(out_path + img_name + "_dehaze_2.jpg", dehazed);
 
 	return 0;
 }
